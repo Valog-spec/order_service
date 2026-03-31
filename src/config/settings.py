@@ -20,7 +20,14 @@ class DatabaseSettings(BaseSettings):
     def build_dsn(self) -> "DatabaseSettings":
         """Собираем DSN из компонентов или используем готовый"""
         if self.POSTGRES_CONNECTION_STRING:
-            self.DSN = self.POSTGRES_CONNECTION_STRING
+            dsn = self.POSTGRES_CONNECTION_STRING
+
+            if dsn.startswith("postgres://"):
+                dsn = dsn.replace("postgres://", "postgresql+asyncpg://", 1)
+            elif dsn.startswith("postgresql://") and "+asyncpg" not in dsn:
+                dsn = dsn.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+            self.DSN = dsn
         else:
             self.DSN = (
                 f"postgresql+asyncpg://{self.USER}:{self.PASSWORD}"
