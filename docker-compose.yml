@@ -1,0 +1,61 @@
+services:
+  order-service:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DB_USER: dev
+      DB_PASS: store
+      DB_HOST: database
+      DB_NAME: dev
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC: orders
+      PYTHONASYNCIODEBUG: "1"
+    depends_on:
+      database:
+        condition: service_healthy
+#      kafka:
+#        condition: service_started
+    networks:
+      - store-network
+
+  database:
+    image: postgres
+    environment:
+      POSTGRES_USER: dev
+      POSTGRES_DB: dev
+      POSTGRES_PASSWORD: store
+    ports:
+      - "5432:5432"
+    networks:
+      - store-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dev -d dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+#  kafka:
+#    image: confluentinc/cp-kafka:7.5.0
+#    container_name: kafka
+#    ports:
+#      - "9092:9092"
+#      - "29092:29092"
+#    environment:
+#      KAFKA_NODE_ID: 1
+#      KAFKA_PROCESS_ROLES: broker,controller
+#      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+#      KAFKA_LISTENERS: PLAINTEXT://kafka:9092,CONTROLLER://kafka:9093,PLAINTEXT_HOST://0.0.0.0:29092
+#      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+#      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+#      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+#      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+#      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+#      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+#      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
+#      CLUSTER_ID: lQqfG8S9QOqC4eY1vQj9Lw
+#    networks:
+#      - store-network
+
+networks:
+  store-network:

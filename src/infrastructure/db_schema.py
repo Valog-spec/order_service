@@ -1,0 +1,53 @@
+from sqlalchemy.orm import DeclarativeBase
+
+import uuid
+from datetime import datetime
+from typing import Any, Dict
+
+from sqlalchemy import DateTime, String, func
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.orm import Mapped, mapped_column
+
+from src.domain.models import OrderStatusEnum, OutboxEventStatus
+
+
+class Base(DeclarativeBase):
+    """Базовый класс для всех SQLAlchemy-моделей проекта."""
+
+
+class Order(Base):
+    __tablename__ = "orders"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[str] = mapped_column(nullable=False)
+    quantity: Mapped[int] = mapped_column(nullable=False)
+    item_id: Mapped[uuid.UUID] = mapped_column(nullable=False)
+    status: Mapped[OrderStatusEnum] = mapped_column(
+        default=OrderStatusEnum.NEW, nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=func.now(), onupdate=func.now()
+    )
+    idempotency_key: Mapped[uuid.UUID] = mapped_column(
+        unique=True, nullable=False, index=True
+    )
+
+
+class Outbox(Base):
+    __tablename__ = "outbox"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    event_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    payload: Mapped[Dict[str, Any]] = mapped_column(JSONB, nullable=False, default={})
+    status: Mapped[OutboxEventStatus] = mapped_column(
+        String(20), default=OutboxEventStatus.PENDING
+    )
+    retry_count: Mapped[int] = mapped_column(nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
