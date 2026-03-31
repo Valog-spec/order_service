@@ -35,8 +35,10 @@ class KafkaSettings(BaseSettings):
 
 
 class CatalogSettings(BaseSettings):
-    BASE_URL: str = Field("http://catalog-service:8000", alias="CATALOG_BASE_URL")
-    API_KEY: str = Field("api_key", alias="CATALOG_API_KEY")
+    BASE_URL: str = "http://catalog-service:8000"
+    API_KEY: str = "api_key"
+
+    model_config = SettingsConfigDict(env_prefix="CATALOG_")
 
 
 class Settings(BaseSettings):
