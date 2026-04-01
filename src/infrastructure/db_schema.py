@@ -33,8 +33,8 @@ class Order(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=func.now(), onupdate=func.now()
     )
-    idempotency_key: Mapped[uuid.UUID] = mapped_column(
-        unique=True, nullable=False, index=True
+    idempotency_key: Mapped[str] = mapped_column(
+        String(255), unique=True, nullable=False, index=True
     )
 
     payment: Mapped[Optional["Payment"]] = relationship(

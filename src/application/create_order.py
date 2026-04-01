@@ -1,3 +1,5 @@
+import logging
+
 from pydantic import BaseModel
 import uuid
 
@@ -6,6 +8,8 @@ from src.infrastructure.catalog_client import HttpxCatalogClient
 from src.infrastructure.payment_client import HttpxPaymentClient
 from src.infrastructure.repositories import OrderRepository, OutboxRepository
 from src.infrastructure.unit_of_work import UnitOfWork
+
+logger = logging.getLogger(__name__)
 
 
 class OrderDTO(BaseModel):
@@ -55,12 +59,19 @@ class CreateOrderUseCase:
         self._payment_service = payment_service
 
     async def __call__(self, request: OrderDTO) -> DomainOrder:
+        logger.info(
+            f"Создание заказа: пользователь {request.user_id}, товар {request.item_id}"
+        )
         catalog_item = await self._catalog_service.get_by_id(request.item_id)
 
         if catalog_item is None:
+            logger.warning(f"Товар {request.item_id} не найден")
             raise ItemNotFoundError(item_id=str(request.item_id))
 
         if catalog_item.available_qty < request.quantity:
+            logger.warning(
+                f"Недостаточно товара: доступно {catalog_item.available_qty}, запрошено {request.quantity}"
+            )
             raise InsufficientStockError(
                 available=catalog_item.available_qty,
                 requested=request.quantity,
@@ -77,8 +88,14 @@ class CreateOrderUseCase:
                     and existing_order.quantity == request.quantity
                     and existing_order.item_id == request.item_id
                 ):
+                    logger.info(
+                        f"Повторный запрос: возвращаем существующий заказ {existing_order.id}"
+                    )
                     return existing_order
                 else:
+                    logger.warning(
+                        f"Конфликт идемпотентности: ключ {request.idempotency_key} уже использован"
+                    )
                     raise IdempotencyConflictError(key=request.idempotency_key)
 
             order = await uow.orders.create(
@@ -89,10 +106,11 @@ class CreateOrderUseCase:
                     idempotency_key=request.idempotency_key,
                 )
             )
+            logger.info(f"Заказ {order.id} создан")
             await self._payment_service.create(
                 catalog_item.price, order.id, request.idempotency_key
             )
-
+            logger.debug(f"Платеж для заказа {order.id} инициирован")
             await uow.outbox.create(
                 event=OutboxRepository.OrderCreateDTO(
                     event_type=EventTypeEnum.ORDER_CREATED,
@@ -100,4 +118,5 @@ class CreateOrderUseCase:
                 )
             )
             await uow.commit()
+            logger.info(f"Заказ {order.id} успешно завершен")
             return order

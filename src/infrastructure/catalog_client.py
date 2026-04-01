@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import uuid
 from datetime import datetime
@@ -6,6 +5,7 @@ from decimal import Decimal
 
 import httpx
 from pydantic import BaseModel
+from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
 
 
 class CatalogResponse(BaseModel):
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class HttpxCatalogClient:
-    def __init__(self, base_url: str, api_key: str) -> None:
+    def __init__(self, base_url: str, api_key: str, timeout: int = 10) -> None:
         """
         Args:
             base_url: Базовый URL провайдера (без завершающего слеша).
@@ -28,32 +28,62 @@ class HttpxCatalogClient:
         """
         self._base_url = base_url
         self._api_key = api_key
+        self._timeout = timeout
 
     def _headers(self) -> dict[str, str]:
         """Вернуть заголовки для аутентификации."""
         return {"X-Api-Key": self._api_key}
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_fixed(1),
+        retry=retry_if_exception_type(Exception),
+        reraise=True,
+    )
     async def get_by_id(self, item_id: uuid.UUID):
-        for attempt in range(1, 4):
-            try:
-                async with httpx.AsyncClient(headers=self._headers()) as client:
-                    response = await client.get(
-                        f"{self._base_url}/api/catalog/items/{item_id}"
-                    )
-                    response.raise_for_status()
-                    data = response.json()
-                    return CatalogResponse(
-                        id=uuid.UUID(data["id"]),
-                        name=data["name"],
-                        price=Decimal(data["price"]),
-                        available_qty=data["available_qty"],
-                        created_at=datetime.fromisoformat(
-                            data["created_at"].replace("Z", "+00:00")
-                        ),
-                    )
-            except Exception as e:
-                logger.warning(f"Attempt {attempt} failed for item {item_id}: {e}")
-                if attempt == 3:
-                    logger.error(f"All 3 attempts failed for item {item_id}")
-                    return None
-                await asyncio.sleep(1)
+        try:
+            async with httpx.AsyncClient(
+                headers=self._headers(), timeout=self._timeout
+            ) as client:
+                response = await client.get(
+                    f"{self._base_url}/api/catalog/items/{item_id}"
+                )
+                response.raise_for_status()
+                data = response.json()
+                return CatalogResponse(
+                    id=uuid.UUID(data["id"]),
+                    name=data["name"],
+                    price=Decimal(data["price"]),
+                    available_qty=data["available_qty"],
+                    created_at=datetime.fromisoformat(
+                        data["created_at"].replace("Z", "+00:00")
+                    ),
+                )
+        except httpx.TimeoutException as e:
+            logger.warning(
+                "Request timeout",
+                extra={
+                    "item_id": str(item_id),
+                    "timeout": self._timeout,
+                    "error": str(e),
+                },
+            )
+            raise
+
+        except httpx.HTTPStatusError as e:
+            logger.error(
+                "HTTP error",
+                extra={
+                    "item_id": str(item_id),
+                    "status_code": e.response.status_code,
+                    "response_body": e.response.text[:500],
+                    "error": str(e),
+                },
+            )
+            raise
+
+        except Exception as e:
+            logger.exception(  # Включает traceback
+                "Unexpected error", extra={"item_id": str(item_id), "error": str(e)}
+            )
+            raise

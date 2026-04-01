@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class DatabaseSettings(BaseSettings):
     DB_USER: str = "dev"
     PASSWORD: str = "store"
-    HOST: str = "database"
+    HOST: str = "localhost"
     PORT: int = 5432
     NAME: str = "dev"
     POOL_SIZE: int = 15

@@ -21,7 +21,9 @@ class OrderRepository:
         self._session = session
 
     @staticmethod
-    def _construct(order_orm: Order) -> DomainOrder:
+    def _construct(order_orm: Order | None) -> DomainOrder | None:
+        if not order_orm:
+            return None
         return DomainOrder(
             id=order_orm.id,
             user_id=order_orm.user_id,

@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 import uvicorn
 from fastapi import FastAPI
@@ -10,8 +11,16 @@ from src.presentation.api import router
 # from src.presentation.container import PresentationContainer
 # from src.presentation.outbox_worker import OutboxWorker
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger(__name__)
+
 
 def build_api(container: ApplicationContainer):
+    logger.info("Сборка API...")
     app = FastAPI()
     app.include_router(router)
     container.wire(modules=[api])
@@ -19,6 +28,7 @@ def build_api(container: ApplicationContainer):
 
 
 async def main():
+    logger.info("Запуск Order Service...")
     # presentation_container = PresentationContainer()
     # presentation_container.config.from_yaml("app/config.yaml", required=True)
     #
