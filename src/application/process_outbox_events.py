@@ -30,12 +30,12 @@ class ProcessOutboxEventsUseCase:
             for event in events:
                 async with self._unit_of_work() as uow:
                     try:
+                        logger.debug(f"Отправка события {event.id} типа {event.event_type}")
                         await kp.send_message(
-                            message={
-                                "payload": event.payload,
-                            },
+                            message=event.payload,
                             key=event.id,
                         )
+                        logger.debug(f"Событие {event.id} отправлено")
                     except Exception as e:
                         logger.warning(f"Failed to send event {event.id}: {e}")
                         continue
