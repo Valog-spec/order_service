@@ -2,6 +2,7 @@ import asyncio
 import logging
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
 import httpx
 from pydantic import BaseModel
@@ -10,7 +11,7 @@ from pydantic import BaseModel
 class CatalogResponse(BaseModel):
     id: uuid.UUID
     name: str
-    price: int
+    price: Decimal
     available_qty: int
     created_at: datetime
 
@@ -44,7 +45,7 @@ class HttpxCatalogClient:
                     return CatalogResponse(
                         id=uuid.UUID(data["id"]),
                         name=data["name"],
-                        price=int(data["price"]),
+                        price=Decimal(data["price"]),
                         available_qty=data["available_qty"],
                         created_at=datetime.fromisoformat(
                             data["created_at"].replace("Z", "+00:00")

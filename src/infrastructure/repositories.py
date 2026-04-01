@@ -1,4 +1,5 @@
 import uuid
+from decimal import Decimal
 
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -78,7 +79,7 @@ class PaymentRepository:
         payment_id: uuid.UUID
         order_id: uuid.UUID
         status: str
-        amount: str
+        amount: Decimal
         error_message: str | None = None
 
     def __init__(self, session: AsyncSession):

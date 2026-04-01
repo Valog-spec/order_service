@@ -1,10 +1,12 @@
+from decimal import Decimal
+
 from sqlalchemy.orm import DeclarativeBase, relationship
 
 import uuid
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-from sqlalchemy import DateTime, String, func, ForeignKey
+from sqlalchemy import DateTime, String, func, ForeignKey, Numeric
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -74,7 +76,7 @@ class Payment(Base):
         index=True,
     )
     status: Mapped[PaymentStatusEnum] = mapped_column(String(20), nullable=False)
-    amount: Mapped[str] = mapped_column(String(20), nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
 
     error_message: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(

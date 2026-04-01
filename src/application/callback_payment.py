@@ -1,4 +1,5 @@
 import uuid
+from decimal import Decimal
 
 from pydantic import BaseModel
 
@@ -10,7 +11,7 @@ class PaymentDTO(BaseModel):
     payment_id: uuid.UUID
     order_id: uuid.UUID
     status: str
-    amount: str
+    amount: Decimal
     error_message: str | None = None
 
 
