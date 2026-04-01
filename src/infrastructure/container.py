@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engin
 from sqlalchemy.orm import sessionmaker
 
 from src.infrastructure.catalog_client import HttpxCatalogClient
+from src.infrastructure.payment_client import HttpxPaymentClient
 from src.infrastructure.unit_of_work import UnitOfWork
 
 
@@ -43,4 +44,10 @@ class InfrastructureContainer(containers.DeclarativeContainer):
         HttpxCatalogClient,
         base_url=config.catalog.BASE_URL,
         api_key=config.catalog.API_KEY,
+    )
+    payment_client = providers.Singleton[HttpxPaymentClient](
+        HttpxPaymentClient,
+        base_url=config.payment.BASE_URL,
+        api_key=config.payment.API_KEY,
+        callback_url=config.payment.CALLBACK_URL,
     )

@@ -3,6 +3,7 @@ import uuid
 
 from src.domain.models import Order as DomainOrder, EventTypeEnum
 from src.infrastructure.catalog_client import HttpxCatalogClient
+from src.infrastructure.payment_client import HttpxPaymentClient
 from src.infrastructure.repositories import OrderRepository, OutboxRepository
 from src.infrastructure.unit_of_work import UnitOfWork
 
@@ -11,7 +12,15 @@ class OrderDTO(BaseModel):
     user_id: str
     quantity: int
     item_id: uuid.UUID
-    idempotency_key: uuid.UUID
+    idempotency_key: str
+
+
+class IdempotencyConflictError(Exception):
+    """Ошибка: ключ идемпотентности уже используется с другими данными"""
+
+    def __init__(self, key: str):
+        self.key = key
+        super().__init__(f"Idempotency key '{key}' already used")
 
 
 class InsufficientStockError(Exception):
@@ -35,32 +44,55 @@ class ItemNotFoundError(Exception):
 
 
 class CreateOrderUseCase:
-    def __init__(self, unit_of_work: UnitOfWork, catalog_service: HttpxCatalogClient):
+    def __init__(
+        self,
+        unit_of_work: UnitOfWork,
+        catalog_service: HttpxCatalogClient,
+        payment_service: HttpxPaymentClient,
+    ):
         self._unit_of_work = unit_of_work
         self._catalog_service = catalog_service
+        self._payment_service = payment_service
 
-    async def __call__(self, order: OrderDTO) -> DomainOrder:
-        catalog_item = await self._catalog_service.get_by_id(order.item_id)
+    async def __call__(self, request: OrderDTO) -> DomainOrder:
+        catalog_item = await self._catalog_service.get_by_id(request.item_id)
 
         if catalog_item is None:
-            raise ItemNotFoundError(item_id=str(order.item_id))
+            raise ItemNotFoundError(item_id=str(request.item_id))
 
-        if catalog_item.available_qty < order.quantity:
+        if catalog_item.available_qty < request.quantity:
             raise InsufficientStockError(
                 available=catalog_item.available_qty,
-                requested=order.quantity,
-                item_id=str(order.item_id),
+                requested=request.quantity,
+                item_id=str(request.item_id),
             )
 
         async with self._unit_of_work() as uow:
+            existing_order = await uow.orders.get_by_idempotency_key(
+                request.idempotency_key
+            )
+            if existing_order:
+                if (
+                    existing_order.user_id == request.user_id
+                    and existing_order.quantity == request.quantity
+                    and existing_order.item_id == request.item_id
+                ):
+                    return existing_order
+                else:
+                    raise IdempotencyConflictError(key=request.idempotency_key)
+
             order = await uow.orders.create(
                 order=OrderRepository.OrderCreateDTO(
-                    user_id=order.user_id,
-                    quantity=order.quantity,
-                    item_id=order.item_id,
-                    idempotency_key=order.idempotency_key,
+                    user_id=request.user_id,
+                    quantity=request.quantity,
+                    item_id=request.item_id,
+                    idempotency_key=request.idempotency_key,
                 )
             )
+            await self._payment_service.create(
+                catalog_item.price, order.id, request.idempotency_key
+            )
+
             await uow.outbox.create(
                 event=OutboxRepository.OrderCreateDTO(
                     event_type=EventTypeEnum.ORDER_CREATED,

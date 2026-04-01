@@ -2,14 +2,17 @@ import uuid
 from http import HTTPStatus
 
 from dependency_injector.wiring import Provide, inject
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
+from starlette import status
 
+from src.application.callback_payment import PaymentDTO, ProcessPaymentUseCase
 from src.application.container import ApplicationContainer
 from src.application.create_order import (
     OrderDTO,
     CreateOrderUseCase,
     InsufficientStockError,
     ItemNotFoundError,
+    IdempotencyConflictError,
 )
 from src.application.get_order import GetOrderUseCase
 from src.domain.models import Order
@@ -25,6 +28,10 @@ class OrderResponseModel(Order):
     pass
 
 
+class PaymentCallbackRequest(PaymentDTO):
+    pass
+
+
 @router.post(
     "/orders", status_code=HTTPStatus.CREATED, response_model=OrderResponseModel
 )
@@ -36,7 +43,7 @@ async def create_order(
     ),
 ):
     try:
-        return await create_order_use_case(order=order)
+        return await create_order_use_case(request=order)
     except InsufficientStockError as e:
         raise HTTPException(
             status_code=400,
@@ -46,6 +53,11 @@ async def create_order(
         raise HTTPException(
             status_code=404,
             detail=f"Item not found: {e.item_id}",
+        )
+    except IdempotencyConflictError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Idempotency key '{e.key}' already used",
         )
 
 
@@ -58,3 +70,15 @@ async def get_order(
     ),
 ):
     return await get_order_use_case(order_id=order_id)
+
+
+@router.post("/orders/payment-callback", status_code=HTTPStatus.OK)
+@inject
+async def process_payment(
+    order_callback: PaymentCallbackRequest,
+    callback_payment: ProcessPaymentUseCase = Depends(
+        Provide[ApplicationContainer.process_payment_use_case]
+    ),
+):
+    await callback_payment(order_callback=order_callback)
+    return Response(status_code=HTTPStatus.OK)

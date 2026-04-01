@@ -21,6 +21,13 @@ class OutboxEventStatus(StrEnum):
     SENT = "SENT"
 
 
+class PaymentStatusEnum(StrEnum):
+    """Статус платежа"""
+
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+
+
 class Order(BaseModel):
     id: uuid.UUID
     user_id: str

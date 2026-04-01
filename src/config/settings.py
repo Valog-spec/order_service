@@ -1,18 +1,16 @@
-from pydantic import model_validator, Field
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class DatabaseSettings(BaseSettings):
-    USER: str = "dev"
+    DB_USER: str = "dev"
     PASSWORD: str = "store"
     HOST: str = "database"
     PORT: int = 5432
     NAME: str = "dev"
     POOL_SIZE: int = 15
     POOL_RECYCLE: int = 1800
-    POSTGRES_CONNECTION_STRING: str | None = Field(
-        None, alias="POSTGRES_CONNECTION_STRING"
-    )
+    POSTGRES_CONNECTION_STRING: str | None = None
 
     DSN: str = ""
 
@@ -26,11 +24,10 @@ class DatabaseSettings(BaseSettings):
                 dsn = dsn.replace("postgres://", "postgresql+asyncpg://", 1)
             elif dsn.startswith("postgresql://") and "+asyncpg" not in dsn:
                 dsn = dsn.replace("postgresql://", "postgresql+asyncpg://", 1)
-
             self.DSN = dsn
         else:
             self.DSN = (
-                f"postgresql+asyncpg://{self.USER}:{self.PASSWORD}"
+                f"postgresql+asyncpg://{self.DB_USER}:{self.PASSWORD}"
                 f"@{self.HOST}:{self.PORT}/{self.NAME}"
             )
         return self
@@ -48,6 +45,14 @@ class CatalogSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="CATALOG_")
 
 
+class PaymentSettings(BaseSettings):
+    BASE_URL: str = "http://payment-service:8000"
+    API_KEY: str = "api_key"
+    CALLBACK_URL: str = "http://student-valog-spec-order-service-web.student-valog-spec-order-service.svc:8000/api/orders/payment-callback"
+
+    model_config = SettingsConfigDict(env_prefix="PAYMENT_")
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -58,6 +63,7 @@ class Settings(BaseSettings):
     db: DatabaseSettings = DatabaseSettings()
     kafka: KafkaSettings = KafkaSettings()
     catalog: CatalogSettings = CatalogSettings()
+    payment: PaymentSettings = PaymentSettings()
 
 
 settings = Settings()

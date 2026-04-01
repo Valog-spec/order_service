@@ -4,8 +4,8 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.domain.models import EventTypeEnum
-from src.infrastructure.db_schema import Order, Outbox
+from src.domain.models import EventTypeEnum, OrderStatusEnum
+from src.infrastructure.db_schema import Order, Outbox, Payment
 from src.domain.models import Order as DomainOrder
 
 
@@ -14,7 +14,7 @@ class OrderRepository:
         user_id: str
         quantity: int
         item_id: uuid.UUID
-        idempotency_key: uuid.UUID
+        idempotency_key: str
 
     def __init__(self, session: AsyncSession):
         self._session = session
@@ -55,6 +55,51 @@ class OrderRepository:
         result = await self._session.execute(select(Order).where(Order.id == order_id))
         row = result.scalar_one_or_none()
         return self._construct(row)
+
+    async def get_by_idempotency_key(self, idempotency_key):
+        result = await self._session.execute(
+            select(Order).where(Order.idempotency_key == idempotency_key)
+        )
+        row = result.scalar_one_or_none()
+        return self._construct(row)
+
+    async def update_status(self, order_id, status):
+        result = await self._session.execute(select(Order).where(Order.id == order_id))
+        order = result.scalar_one_or_none()
+        if status == "succeeded":
+            status = OrderStatusEnum.PAID
+        else:
+            status = OrderStatusEnum.CANCELLED
+        order.status = status
+
+
+class PaymentRepository:
+    class PaymentCreateDTO(BaseModel):
+        payment_id: uuid.UUID
+        order_id: uuid.UUID
+        status: str
+        amount: str
+        error_message: str | None = None
+
+    def __init__(self, session: AsyncSession):
+        self._session = session
+
+    async def create_from_callback(self, callback_data: PaymentCreateDTO):
+        """Создает запись о платеже из callback данных"""
+        payment = Payment(
+            payment_id=callback_data.payment_id,
+            order_id=callback_data.order_id,
+            status=callback_data.status,
+            amount=callback_data.amount,
+            error_message=callback_data.error_message,
+        )
+        self._session.add(payment)
+
+    async def get_by_payment_id(self, payment_id):
+        result = await self._session.execute(
+            select(Payment).where(Payment.payment_id == payment_id)
+        )
+        return result.scalar_one_or_none()
 
 
 class OutboxRepository:

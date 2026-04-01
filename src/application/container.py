@@ -1,5 +1,6 @@
 from dependency_injector import containers, providers
 
+from src.application.callback_payment import ProcessPaymentUseCase
 from src.application.create_order import CreateOrderUseCase
 from src.application.get_order import GetOrderUseCase
 from src.infrastructure.container import InfrastructureContainer
@@ -16,9 +17,14 @@ class ApplicationContainer(containers.DeclarativeContainer):
         CreateOrderUseCase,
         unit_of_work=infrastructure_container.unit_of_work,
         catalog_service=infrastructure_container.catalog_client,
+        payment_service=infrastructure_container.payment_client,
     )
     get_order_use_case = providers.Singleton[GetOrderUseCase](
         GetOrderUseCase, unit_of_work=infrastructure_container.unit_of_work
+    )
+
+    process_payment_use_case = providers.Singleton[ProcessPaymentUseCase](
+        ProcessPaymentUseCase, unit_of_work=infrastructure_container.unit_of_work
     )
 
     # process_outbox_events_use_case = providers.Singleton[ProcessOutboxEventsUseCase](
