@@ -35,6 +35,7 @@ def upgrade() -> None:
         existing_type=sa.VARCHAR(length=20),
         type_=sa.Numeric(precision=10, scale=2),
         existing_nullable=False,
+        postgresql_using="amount::numeric(10,2)"
     )
     # ### end Alembic commands ###
 
@@ -48,6 +49,7 @@ def downgrade() -> None:
         existing_type=sa.Numeric(precision=10, scale=2),
         type_=sa.VARCHAR(length=20),
         existing_nullable=False,
+        postgresql_using="amount::varchar(20)"
     )
     op.alter_column(
         "orders",
@@ -55,5 +57,6 @@ def downgrade() -> None:
         existing_type=sa.String(length=255),
         type_=sa.UUID(),
         existing_nullable=False,
+        postgresql_using="idempotency_key::uuid"
     )
     # ### end Alembic commands ###
