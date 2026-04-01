@@ -75,6 +75,8 @@ class OrderRepository:
     async def update_status(self, order_id, status):
         result = await self._session.execute(select(Order).where(Order.id == order_id))
         order = result.scalar_one_or_none()
+        if not order:
+            return
         if status == "succeeded":
             status = OrderStatusEnum.PAID
         elif status == "failed":

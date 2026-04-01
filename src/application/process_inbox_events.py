@@ -52,7 +52,6 @@ class ProcessInboxEventsUseCase:
                     logger.info(f"Событие {msg.key} обработано")
                 except Exception as e:
                     logger.error(f"Ошибка при обработке {msg.key}: {e}")
-                    await uow.rollback()
 
     async def _handle_order_shipped(self, payload: dict, uow: UnitOfWork):
         """Обработка события order.shipped"""
