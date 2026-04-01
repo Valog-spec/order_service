@@ -1,3 +1,5 @@
+import asyncio
+import logging
 import uuid
 from datetime import datetime
 
@@ -11,6 +13,9 @@ class CatalogResponse(BaseModel):
     price: int
     available_qty: int
     created_at: datetime
+
+
+logger = logging.getLogger(__name__)
 
 
 class HttpxCatalogClient:
@@ -28,22 +33,26 @@ class HttpxCatalogClient:
         return {"X-Api-Key": self._api_key}
 
     async def get_by_id(self, item_id: uuid.UUID):
-
-        async with httpx.AsyncClient(headers=self._headers()) as client:
+        for attempt in range(1, 4):
             try:
-                response = await client.get(
-                    f"{self._base_url}/api/catalog/items/{item_id}"
-                )
-                response.raise_for_status()
-                data = response.json()
-                return CatalogResponse(
-                    id=uuid.UUID(data["id"]),
-                    name=data["name"],
-                    price=int(data["price"]),
-                    available_qty=data["available_qty"],
-                    created_at=datetime.fromisoformat(
-                        data["created_at"].replace("Z", "+00:00")
-                    ),
-                )
-            except Exception:
-                ...
+                async with httpx.AsyncClient(headers=self._headers()) as client:
+                    response = await client.get(
+                        f"{self._base_url}/api/catalog/items/{item_id}"
+                    )
+                    response.raise_for_status()
+                    data = response.json()
+                    return CatalogResponse(
+                        id=uuid.UUID(data["id"]),
+                        name=data["name"],
+                        price=int(data["price"]),
+                        available_qty=data["available_qty"],
+                        created_at=datetime.fromisoformat(
+                            data["created_at"].replace("Z", "+00:00")
+                        ),
+                    )
+            except Exception as e:
+                logger.warning(f"Attempt {attempt} failed for item {item_id}: {e}")
+                if attempt == 3:
+                    logger.error(f"All 3 attempts failed for item {item_id}")
+                    return None
+                await asyncio.sleep(1)
