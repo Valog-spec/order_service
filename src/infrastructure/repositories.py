@@ -3,10 +3,16 @@ from decimal import Decimal
 
 from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.domain.models import EventTypeEnum, OrderStatusEnum
-from src.infrastructure.db_schema import Order, Outbox, Payment
+from src.domain.models import (
+    EventTypeEnum,
+    OrderStatusEnum,
+    OutboxEventStatus,
+    OutboxEvent,
+)
+from src.infrastructure.db_schema import Order, Outbox, Payment, Inbox
 from src.domain.models import Order as DomainOrder
 
 
@@ -71,8 +77,10 @@ class OrderRepository:
         order = result.scalar_one_or_none()
         if status == "succeeded":
             status = OrderStatusEnum.PAID
-        else:
+        elif status == "failed":
             status = OrderStatusEnum.CANCELLED
+        else:
+            status = status
         order.status = status
 
 
@@ -113,7 +121,59 @@ class OutboxRepository:
     def __init__(self, session: AsyncSession):
         self._session = session
 
+    @staticmethod
+    def _construct(outbox: Outbox | None) -> OutboxEvent | None:
+        if not outbox:
+            return None
+
+        return OutboxEvent(
+            id=str(outbox.id),
+            event_type=outbox.event_type,
+            payload=outbox.payload,
+            status=outbox.status,
+            created_at=outbox.created_at,
+        )
+
     async def create(self, event: OrderCreateDTO):
         event = Outbox(event_type=event.event_type, payload=event.payload)
-
         self._session.add(event)
+
+    async def get_pending_events(self, limit: int = 100) -> list[OutboxEvent]:
+        stmt = (
+            select(Outbox)
+            .where(Outbox.status == OutboxEventStatus.PENDING)
+            .order_by(Outbox.created_at)
+            .limit(limit)
+        )
+        result = await self._session.execute(stmt)
+        rows = result.scalars().all()
+
+        return [self._construct(row) for row in rows]
+
+    async def mark_as_sent(self, event_id):
+        result = await self._session.execute(
+            select(Outbox).where(Outbox.id == event_id)
+        )
+        order = result.scalar_one_or_none()
+        order.status = OutboxEventStatus.SENT
+
+
+class InboxRepository:
+    class OrderCreateDTO(BaseModel):
+        event_type: EventTypeEnum
+        payload: dict
+
+    def __init__(self, session: AsyncSession):
+        self._session = session
+
+    async def add(self, event_id, event_type, payload):
+        inbox_entry = Inbox(
+            event_id=event_id,
+            event_type=event_type,
+            payload=payload,
+        )
+        self._session.add(inbox_entry)
+        try:
+            await self._session.flush()
+        except IntegrityError:
+            raise

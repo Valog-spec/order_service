@@ -4,7 +4,8 @@ from decimal import Decimal
 
 from pydantic import BaseModel
 
-from src.infrastructure.repositories import PaymentRepository
+from src.domain.models import EventTypeEnum
+from src.infrastructure.repositories import PaymentRepository, OutboxRepository
 from src.infrastructure.unit_of_work import UnitOfWork
 
 logger = logging.getLogger(__name__)
@@ -39,8 +40,32 @@ class ProcessPaymentUseCase:
             logger.info(
                 f"Обновление статуса заказа {order_callback.order_id} на {order_callback.status}"
             )
+            order = await uow.orders.get_by_id(order_id=order_callback.order_id)
+            if not order:
+                logger.error(f"Заказ {order_callback.order_id} не найден")
+                raise
+
             await uow.orders.update_status(
                 order_id=order_callback.order_id, status=order_callback.status
+            )
+            if order_callback.status == "succeeded":
+                event_type = EventTypeEnum.ORDER_PAID
+                event_name = "order.paid"
+            else:
+                event_type = EventTypeEnum.ORDER_CANCELLED
+                event_name = "order.cancelled"
+
+            await uow.outbox.create(
+                event=OutboxRepository.OrderCreateDTO(
+                    event_type=event_type,
+                    payload={
+                        "event_type": event_name,
+                        "order_id": str(order_callback.order_id),
+                        "item_id": str(order.item_id),
+                        "quantity": order.quantity,
+                        "idempotency_key": order.idempotency_key,
+                    },
+                )
             )
             logger.info(f"Сохранение платежа {order_callback.payment_id}")
             await uow.payments.create_from_callback(

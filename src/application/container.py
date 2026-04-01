@@ -3,6 +3,8 @@ from dependency_injector import containers, providers
 from src.application.callback_payment import ProcessPaymentUseCase
 from src.application.create_order import CreateOrderUseCase
 from src.application.get_order import GetOrderUseCase
+from src.application.process_inbox_events import ProcessInboxEventsUseCase
+from src.application.process_outbox_events import ProcessOutboxEventsUseCase
 from src.infrastructure.container import InfrastructureContainer
 
 
@@ -27,8 +29,14 @@ class ApplicationContainer(containers.DeclarativeContainer):
         ProcessPaymentUseCase, unit_of_work=infrastructure_container.unit_of_work
     )
 
-    # process_outbox_events_use_case = providers.Singleton[ProcessOutboxEventsUseCase](
-    #     ProcessOutboxEventsUseCase,
-    #     unit_of_work=infrastructure_container.unit_of_work,
-    #     kafka_producer=infrastructure_container.kafka_producer,
-    # )
+    process_outbox_events_use_case = providers.Singleton[ProcessOutboxEventsUseCase](
+        ProcessOutboxEventsUseCase,
+        unit_of_work=infrastructure_container.unit_of_work,
+        kafka_producer=infrastructure_container.kafka_producer,
+    )
+
+    process_inbox_events_use_case = providers.Singleton[ProcessInboxEventsUseCase](
+        ProcessInboxEventsUseCase,
+        unit_of_work=infrastructure_container.unit_of_work,
+        kafka_consumer=infrastructure_container.kafka_consumer,
+    )

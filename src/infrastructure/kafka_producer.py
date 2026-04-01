@@ -15,16 +15,17 @@ class KafkaProducer:
         self._producer: AIOKafkaProducer | None = None
 
     async def start(self):
-        """Initialize and start the Kafka producer"""
         self._producer = AIOKafkaProducer(
             bootstrap_servers=self._bootstrap_servers,
             value_serializer=lambda v: json.dumps(v).encode("utf-8"),
             key_serializer=lambda k: k.encode("utf-8") if k else None,
+            acks=1,
+            max_batch_size=32768,
+            linger_ms=10,
         )
         await self._producer.start()
 
     async def stop(self):
-        """Stop the Kafka producer"""
         if self._producer:
             await self._producer.stop()
 
@@ -34,12 +35,11 @@ class KafkaProducer:
         key: str | None = None,
         topic: str | None = None,
     ) -> None:
-        """Send a message to Kafka"""
         if not self._producer:
             raise RuntimeError("Producer is not started. Call start() first.")
 
         target_topic = topic or self._topic
-        await self._producer.send_and_wait(
+        await self._producer.send(
             topic=target_topic,
             value=message,
             key=key,

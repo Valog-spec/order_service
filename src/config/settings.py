@@ -34,8 +34,10 @@ class DatabaseSettings(BaseSettings):
 
 
 class KafkaSettings(BaseSettings):
-    BOOTSTRAP_SERVERS: str = "localhost:9092"
-    TOPUC: str = "orders"
+    KAFKA_BOOTSTRAP_SERVERS: str = "kafka.kafka.svc.cluster.local:9092"
+    TOPIC: str = "student_system-order.events"
+    CONSUMER_GROUP: str = "order-service"
+    CONSUMER_TOPIC: str = "student_system-shipment.events"
 
 
 class CatalogSettings(BaseSettings):

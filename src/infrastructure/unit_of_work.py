@@ -6,6 +6,7 @@ from src.infrastructure.repositories import (
     OrderRepository,
     OutboxRepository,
     PaymentRepository,
+    InboxRepository,
 )
 
 
@@ -30,6 +31,7 @@ class _UnitOfWorkImplementation:
         self._order_repo = OrderRepository(session)
         self._outbox_repo = OutboxRepository(session)
         self._payment_repo = PaymentRepository(session)
+        self._inbox_repo = InboxRepository(session)
 
     @property
     def orders(self) -> OrderRepository:
@@ -42,6 +44,10 @@ class _UnitOfWorkImplementation:
     @property
     def payments(self) -> PaymentRepository:
         return self._payment_repo
+
+    @property
+    def inbox(self) -> InboxRepository:
+        return self._inbox_repo
 
     async def commit(self):
         await self._session.commit()

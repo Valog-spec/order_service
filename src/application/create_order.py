@@ -114,7 +114,13 @@ class CreateOrderUseCase:
             await uow.outbox.create(
                 event=OutboxRepository.OrderCreateDTO(
                     event_type=EventTypeEnum.ORDER_CREATED,
-                    payload=order.model_dump(mode="json"),
+                    payload={
+                        "event_type": EventTypeEnum.ORDER_CREATED,
+                        "order_id": str(order.id),
+                        "item_id": str(order.item_id),
+                        "quantity": order.quantity,
+                        "idempotency_key": request.idempotency_key,
+                    },
                 )
             )
             await uow.commit()

@@ -10,7 +10,12 @@ from sqlalchemy import DateTime, String, func, ForeignKey, Numeric
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from src.domain.models import OrderStatusEnum, OutboxEventStatus, PaymentStatusEnum
+from src.domain.models import (
+    OrderStatusEnum,
+    OutboxEventStatus,
+    PaymentStatusEnum,
+    EventTypeEnum,
+)
 
 
 class Base(DeclarativeBase):
@@ -48,7 +53,7 @@ class Outbox(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    event_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    event_type: Mapped[EventTypeEnum] = mapped_column(String(50), nullable=False)
     payload: Mapped[Dict[str, Any]] = mapped_column(JSONB, nullable=False, default={})
     status: Mapped[OutboxEventStatus] = mapped_column(
         String(20), default=OutboxEventStatus.PENDING
@@ -86,3 +91,18 @@ class Payment(Base):
     order: Mapped["Order"] = relationship(
         "Order", back_populates="payment", uselist=False
     )
+
+
+class Inbox(Base):
+    """Таблица для идемпотентной обработки входящих событий"""
+
+    __tablename__ = "inbox"
+
+    id: Mapped[UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    event_id: Mapped[str] = mapped_column(
+        String(255), unique=True, nullable=False, index=True
+    )
+    event_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    payload: Mapped[Dict[str, Any]] = mapped_column(JSONB, nullable=False, default={})
