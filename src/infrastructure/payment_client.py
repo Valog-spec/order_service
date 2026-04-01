@@ -59,8 +59,8 @@ class HttpxPaymentClient:
                 response = await client.post(
                     f"{self._base_url}/api/payments",
                     json={
-                        "order_id": order_id,
-                        "amount:": amount,
+                        "order_id": str(order_id),
+                        "amount": str(amount),
                         "callback_url": self._callback_url,
                         "idempotency_key": idempotency_key,
                     },

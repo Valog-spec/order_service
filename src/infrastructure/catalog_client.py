@@ -40,7 +40,7 @@ class HttpxCatalogClient:
         retry=retry_if_exception_type(Exception),
         reraise=True,
     )
-    async def get_by_id(self, item_id: uuid.UUID):
+    async def get_by_id(self, item_id: uuid.UUID) -> CatalogResponse:
         try:
             async with httpx.AsyncClient(
                 headers=self._headers(), timeout=self._timeout
