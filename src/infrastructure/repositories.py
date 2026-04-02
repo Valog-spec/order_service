@@ -1,3 +1,4 @@
+import logging
 import uuid
 from decimal import Decimal
 
@@ -14,6 +15,8 @@ from src.domain.models import (
 )
 from src.infrastructure.db_schema import Order, Outbox, Payment, Inbox
 from src.domain.models import Order as DomainOrder
+
+logger = logging.getLogger(__name__)
 
 
 class OrderRepository:
@@ -73,9 +76,11 @@ class OrderRepository:
         return self._construct(row)
 
     async def update_status(self, order_id, status):
+        logger.info(f"Обновление статуса заказа {order_id} на {status}")
         result = await self._session.execute(select(Order).where(Order.id == order_id))
         order = result.scalar_one_or_none()
         if not order:
+            logger.error(f"Заказ {order_id} не найден при обновлении статуса")
             return
         if status == "succeeded":
             status = OrderStatusEnum.PAID
@@ -83,6 +88,7 @@ class OrderRepository:
             status = OrderStatusEnum.CANCELLED
         else:
             status = status
+        logger.info(f"Статус заказа {order_id} успешно обновлен на {order.status}")
         order.status = status
 
 
