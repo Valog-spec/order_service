@@ -75,21 +75,20 @@ class OrderRepository:
         row = result.scalar_one_or_none()
         return self._construct(row)
 
-    async def update_status(self, order_id, status):
+    async def update_status(self, order_id, status: OrderStatusEnum):
         logger.info(f"Обновление статуса заказа {order_id} на {status}")
+
         result = await self._session.execute(select(Order).where(Order.id == order_id))
         order = result.scalar_one_or_none()
+
         if not order:
             logger.error(f"Заказ {order_id} не найден при обновлении статуса")
             return
-        if status == "succeeded":
-            status = OrderStatusEnum.PAID
-        elif status == "failed":
-            status = OrderStatusEnum.CANCELLED
-        else:
-            status = status
-        logger.info(f"Статус заказа {order_id} успешно обновлен на {order.status}")
+
+        old_status = order.status
         order.status = status
+
+        logger.info(f"Статус заказа {order_id} изменен: {old_status} → {order.status}")
 
 
 class PaymentRepository:
