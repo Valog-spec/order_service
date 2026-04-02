@@ -23,6 +23,7 @@ class HttpxNotificationClient:
     )
     async def send(self, message: str, reference_id: str, idempotency_key: str):
         """Отправляет уведомление"""
+        logger.info(f"Отправка уведомления для заказа {reference_id}")
         async with httpx.AsyncClient(
             headers=self._headers(), timeout=self._timeout
         ) as client:
@@ -34,5 +35,16 @@ class HttpxNotificationClient:
                     "idempotency_key": idempotency_key,
                 },
             )
-            response.raise_for_status()
-            logger.info(f"Notification sent for order {reference_id}")
+            logger.info(f"Статус ответа от сервиса уведомлений: {response.status_code}")
+            try:
+                response.raise_for_status()
+            except httpx.HTTPStatusError as e:
+                logger.error(
+                    f"Ошибка при отправке уведомления: {e.response.status_code} - {e.response.text}"
+                )
+                raise
+            except Exception as e:
+                logger.error(f"Неизвестная ошибка при отправке уведомления: {e}")
+                raise
+
+            logger.info(f"Уведомление для заказа {reference_id} успешно отправлено")

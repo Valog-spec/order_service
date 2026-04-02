@@ -54,7 +54,7 @@ class ProcessOutboxEventsUseCase:
         """Отправляет уведомление для событий заказа"""
         payload = event.payload
         event_type = payload.get("event_type")
-
+        logger.info(f"Обработка уведомления для события: {event_type}")
         messages = {
             "order.created": "Your order has been created",
             "order.paid": "Your order has been paid",
@@ -69,9 +69,17 @@ class ProcessOutboxEventsUseCase:
 
         reference_id = payload.get("order_id")
         idempotency_key = payload.get("idempotency_key")
-
-        await self._notification_client.send(
-            message=message,
-            reference_id=reference_id,
-            idempotency_key=idempotency_key,
+        logger.info(
+            f"Отправка в сервис уведомлений: сообщение='{message}', заказ={reference_id}, ключ идемпотентности={idempotency_key}"
         )
+        try:
+            await self._notification_client.send(
+                message=message,
+                reference_id=reference_id,
+                idempotency_key=idempotency_key,
+            )
+            logger.info(f"Уведомление для заказа {reference_id} успешно отправлено")
+        except Exception as e:
+            logger.error(
+                f"Не удалось отправить уведомление для заказа {reference_id}: {e}"
+            )
