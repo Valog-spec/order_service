@@ -74,7 +74,7 @@ class ProcessPaymentUseCase:
                         "order_id": str(order_callback.order_id),
                         "item_id": str(order.item_id),
                         "quantity": order.quantity,
-                        "idempotency_key": str(order_callback.order_id),
+                        "idempotency_key": f"{order_callback.order_id}-paid",
                     },
                 )
             )

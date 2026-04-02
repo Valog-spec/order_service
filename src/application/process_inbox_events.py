@@ -66,7 +66,7 @@ class ProcessInboxEventsUseCase:
                 payload={
                     "event_type": EventTypeEnum.ORDER_SHIPPED,
                     "order_id": order_id,
-                    "idempotency_key": str(order_id),
+                    "idempotency_key": f"{order_id}-shipped",
                 },
             )
         )
@@ -84,7 +84,7 @@ class ProcessInboxEventsUseCase:
                 payload={
                     "event_type": EventTypeEnum.ORDER_CANCELLED,
                     "order_id": order_id,
-                    "idempotency_key": str(order_id),
+                    "idempotency_key": f"{order_id}-cancelled",
                 },
             )
         )
