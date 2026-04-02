@@ -2,7 +2,8 @@ import logging
 from aiokafka import AIOKafkaConsumer
 from sqlalchemy.exc import IntegrityError
 
-from src.domain.models import OrderStatusEnum
+from src.domain.models import OrderStatusEnum, EventTypeEnum
+from src.infrastructure.repositories import OutboxRepository
 from src.infrastructure.unit_of_work import UnitOfWork
 
 logger = logging.getLogger(__name__)
@@ -56,15 +57,35 @@ class ProcessInboxEventsUseCase:
     async def _handle_order_shipped(self, payload: dict, uow: UnitOfWork):
         """Обработка события order.shipped"""
         order_id = payload.get("order_id")
-        logger.info(f"Статус заказа {order_id} изменен на отправлен")
         await uow.orders.update_status(
             order_id=order_id, status=OrderStatusEnum.SHIPPED
         )
+        await uow.outbox.create(
+            event=OutboxRepository.OrderCreateDTO(
+                event_type=EventTypeEnum.ORDER_SHIPPED,
+                payload={
+                    "event_type": EventTypeEnum.ORDER_SHIPPED,
+                    "order_id": order_id,
+                    "idempotency_key": str(order_id),
+                },
+            )
+        )
+        logger.info(f"Статус заказа {order_id} изменен на отправлен")
 
     async def _handle_order_cancelled(self, payload: dict, uow: UnitOfWork):
         """Обработка события order.cancelled"""
         order_id = payload.get("order_id")
-        logger.info(f"Статус заказа {order_id} изменен на оплачен")
         await uow.orders.update_status(
             order_id=order_id, status=OrderStatusEnum.CANCELLED
         )
+        await uow.outbox.create(
+            event=OutboxRepository.OrderCreateDTO(
+                event_type=EventTypeEnum.ORDER_CANCELLED,
+                payload={
+                    "event_type": EventTypeEnum.ORDER_CANCELLED,
+                    "order_id": order_id,
+                    "idempotency_key": str(order_id),
+                },
+            )
+        )
+        logger.info(f"Статус заказа {order_id} изменен на отменен")
