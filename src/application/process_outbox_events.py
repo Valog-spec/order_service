@@ -55,11 +55,17 @@ class ProcessOutboxEventsUseCase:
         payload = event.payload
         event_type = payload.get("event_type")
         logger.info(f"Обработка уведомления для события: {event_type}")
+        # messages = {
+        #     "order.created": "Your order has been created",
+        #     "order.paid": "Your order has been paid",
+        #     "order.shipped": "Your order has been shipped!",
+        #     "order.cancelled": "Your order has been cancelled",
+        # }
         messages = {
-            "order.created": "Your order has been created",
-            "order.paid": "Your order has been paid",
-            "order.shipped": "Your order has been shipped!",
-            "order.cancelled": "Your order has been cancelled",
+            "order.created": "NEW",
+            "order.paid": "PAID",
+            "order.shipped": "SHIPPED",
+            "order.cancelled": "CANCELLED",
         }
 
         message = messages.get(event_type)
