@@ -20,7 +20,6 @@ class ApplicationContainer(containers.DeclarativeContainer):
         unit_of_work=infrastructure_container.unit_of_work,
         catalog_service=infrastructure_container.catalog_client,
         payment_service=infrastructure_container.payment_client,
-        notification_client=infrastructure_container.notification_client,
     )
     get_order_use_case = providers.Singleton[GetOrderUseCase](
         GetOrderUseCase, unit_of_work=infrastructure_container.unit_of_work
@@ -34,6 +33,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
         ProcessOutboxEventsUseCase,
         unit_of_work=infrastructure_container.unit_of_work,
         kafka_producer=infrastructure_container.kafka_producer,
+        notification_client=infrastructure_container.notification_client,
     )
 
     process_inbox_events_use_case = providers.Singleton[ProcessInboxEventsUseCase](
