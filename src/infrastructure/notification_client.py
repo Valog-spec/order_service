@@ -1,0 +1,38 @@
+import logging
+
+import httpx
+from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
+
+logger = logging.getLogger(__name__)
+
+
+class HttpxNotificationClient:
+    def __init__(self, base_url: str, api_key: str, timeout: int = 30):
+        self._base_url = base_url
+        self._api_key = api_key
+        self._timeout = timeout
+
+    def _headers(self) -> dict[str, str]:
+        return {"X-API-Key": self._api_key}
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_fixed(1),
+        retry=retry_if_exception_type(Exception),
+        reraise=True,
+    )
+    async def send(self, message: str, reference_id: str, idempotency_key: str):
+        """Отправляет уведомление"""
+        async with httpx.AsyncClient(
+            headers=self._headers(), timeout=self._timeout
+        ) as client:
+            response = await client.post(
+                f"{self._base_url}/api/notifications",
+                json={
+                    "message": message,
+                    "reference_id": reference_id,
+                    "idempotency_key": idempotency_key,
+                },
+            )
+            response.raise_for_status()
+            logger.info(f"Notification sent for order {reference_id}")

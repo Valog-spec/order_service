@@ -11,8 +11,6 @@ from src.presentation.api import router
 from src.presentation.container import PresentationContainer
 from src.presentation.outbox_worker import OutboxWorker
 
-# from src.presentation.container import PresentationContainer
-# from src.presentation.outbox_worker import OutboxWorker
 
 logging.basicConfig(
     level=logging.INFO,

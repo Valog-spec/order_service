@@ -41,8 +41,8 @@ class ProcessInboxEventsUseCase:
 
                     if event_type == "order.shipped":
                         await self._handle_order_shipped(msg.value, uow)
-                    elif event_type == "order.paid":
-                        await self._handle_order_paid(msg.value, uow)
+                    elif event_type == "order.cancelled":
+                        await self._handle_order_cancelled(msg.value, uow)
                     else:
                         logger.warning(f"Неизвестный тип события {event_type}")
 
@@ -61,8 +61,10 @@ class ProcessInboxEventsUseCase:
             order_id=order_id, status=OrderStatusEnum.SHIPPED
         )
 
-    async def _handle_order_paid(self, payload: dict, uow: UnitOfWork):
-        """Обработка события order.paid"""
+    async def _handle_order_cancelled(self, payload: dict, uow: UnitOfWork):
+        """Обработка события order.cancelled"""
         order_id = payload.get("order_id")
         logger.info(f"Статус заказа {order_id} изменен на оплачен")
-        await uow.orders.update_status(order_id=order_id, status=OrderStatusEnum.PAID)
+        await uow.orders.update_status(
+            order_id=order_id, status=OrderStatusEnum.CANCELLED
+        )

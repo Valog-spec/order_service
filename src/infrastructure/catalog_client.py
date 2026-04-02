@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class HttpxCatalogClient:
-    def __init__(self, base_url: str, api_key: str, timeout: int = 10) -> None:
+    def __init__(self, base_url: str, api_key: str, timeout: int = 30) -> None:
         """
         Args:
             base_url: Базовый URL провайдера (без завершающего слеша).

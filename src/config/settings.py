@@ -55,6 +55,13 @@ class PaymentSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="PAYMENT_")
 
 
+class NotificationSettings(BaseSettings):
+    BASE_URL: str = "http://notification-service:8000"
+    API_KEY: str = "api_key"
+
+    model_config = SettingsConfigDict(env_prefix="NOTIFICATION_")
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -66,6 +73,7 @@ class Settings(BaseSettings):
     kafka: KafkaSettings = KafkaSettings()
     catalog: CatalogSettings = CatalogSettings()
     payment: PaymentSettings = PaymentSettings()
+    notification: NotificationSettings = NotificationSettings()
 
 
 settings = Settings()

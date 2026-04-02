@@ -7,6 +7,7 @@ from sqlalchemy.orm import sessionmaker
 from src.infrastructure.catalog_client import HttpxCatalogClient
 from src.infrastructure.kafka_consumer import KafkaConsumer
 from src.infrastructure.kafka_producer import KafkaProducer
+from src.infrastructure.notification_client import HttpxNotificationClient
 from src.infrastructure.payment_client import HttpxPaymentClient
 from src.infrastructure.unit_of_work import UnitOfWork
 
@@ -49,4 +50,10 @@ class InfrastructureContainer(containers.DeclarativeContainer):
         base_url=config.payment.BASE_URL,
         api_key=config.payment.API_KEY,
         callback_url=config.payment.CALLBACK_URL,
+    )
+
+    notification_client = providers.Singleton[HttpxNotificationClient](
+        HttpxNotificationClient,
+        base_url=config.notification.BASE_URL,
+        api_key=config.notification.API_KEY,
     )
