@@ -1,7 +1,12 @@
 import logging
 
 import httpx
-from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    retry_if_exception_type,
+    wait_exponential,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -16,8 +21,8 @@ class HttpxNotificationClient:
         return {"X-API-Key": self._api_key}
 
     @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_fixed(1),
+        stop=stop_after_attempt(7),
+        wait=wait_exponential(multiplier=1, min=1, max=8),
         retry=retry_if_exception_type(Exception),
         reraise=True,
     )
